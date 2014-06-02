@@ -39,8 +39,10 @@
   :type 'hook
   :group 'bjump)
 
+;; TODO: sync these docs into `bjump-jump'.
 
 ;;; selectors
+;; ...
 
 (defun bjump-selector-char (char)
   "Return a regexp matching CHAR at the beginning of a word."
@@ -48,6 +50,14 @@
 
 
 ;;; window scope
+;; "window scope" resolution is useful to narrow down the region of
+;; the visible portion of window from where candidates should be
+;; picked.  It should return bounds of the region.  These bounds
+;; should not "overflow" the visible buffer region.
+
+;; TODO: add more using `thingatpt' (defun, sentence), but guard for
+;; "overflowing" the visible buffer area.
+
 (defun bjump-ws-window-bounds ()
   "Get the bounds of the portion of buffer visible in current window."
   (save-excursion
@@ -120,6 +130,11 @@ Ordered by `next-window' and `visible-frame-list'."
 
 
 ;;; actions
+;; Action executed at the picked overlay.  This gets the overlay as an
+;; argument an can do any action whatsoever.  At the time this
+;; function is run, selected window is the window from where the jump
+;; function was called.  You can get the window where this overlay is
+;; defined by getting the property `bjump-window' from the overlay.
 
 (defun bjump-action-goto-char (ov)
   "Select the frame and window where OV is placed, then go to the beginning of OV."
