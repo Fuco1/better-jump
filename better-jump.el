@@ -29,6 +29,9 @@
 (require 'dash)
 (require 'ov)
 
+
+;;; user settings
+
 ;; add more hooks
 (defcustom bjump-window-jump-after-action-hook ()
   "Hook run after the action has been executed and all the bjump
@@ -36,6 +39,11 @@
   :type 'hook
   :group 'bjump)
 
+
+;;; selectors
+
+
+;;; window scope
 (defun bjump-buffer-window-bounds ()
   "Get the buffer bounds of current window."
   (save-excursion
@@ -46,49 +54,23 @@
             (move-to-window-line -1)
             (line-end-position)))))
 
+
+;;; frame scope
+
+
+;;; pickers
+
 ;; TODO: write some more generic "hint select function" that would
 ;; also style the window nicely.  Could display the entire hint or
 ;; just first letter like ace-jump-mode does.  The hint display text
 ;; could be modified dynamically to reflect changes made by the
 ;; read-loop.  Should also take prompt and stuff.
 
-(defun bjump-word-jump (head-char)
-  (interactive "cHead char: ")
-  (bjump-jump
-   (concat "\\<" (char-to-string head-char))
-   (lambda (_) (bjump-buffer-window-bounds))
-   (lambda () (list (car (window-list))))
-   (lambda (ovs) (let ((ido-match (ido-completing-read "Where to jump: " (--map (ov-val it 'bjump-id) ovs))))
-                   (nth (--find-index (equal ido-match (ov-val it 'bjump-id)) ovs) ovs)))
-   (lambda (ov) (goto-char (ov-beg ov)))))
+
+;;; actions
 
-(defun bjump-line-word-jump (head-char)
-  (interactive "cHead char: ")
-  (bjump-jump
-   (concat "\\<" (char-to-string head-char))
-   (lambda (_) (cons (line-beginning-position) (line-end-position)))
-   (lambda () (list (car (window-list))))
-   (lambda (ovs) (let ((ido-match (ido-completing-read "Where to jump: " (--map (ov-val it 'bjump-id) ovs))))
-                   (nth (--find-index (equal ido-match (ov-val it 'bjump-id)) ovs) ovs)))
-   (lambda (ov) (goto-char (ov-beg ov)))))
-
-(defun bjump-window-jump ()
-  (interactive)
-  (bjump-jump
-   (lambda (_ _) (save-excursion
-                   (move-to-window-line 0)
-                   (list (cons (point) (point)))))
-   (lambda (_) (cons 1 1)) ;; this is ignored by the selector
-   (lambda () (--remove (equal it (selected-window))
-                        (--mapcat (window-list it) (visible-frame-list))))
-   (lambda (ovs)
-     ;; sort the overlays here in some manner
-     (--map (overlay-put it 'before-string (overlay-get it 'bjump-id)) ovs)
-     (let ((ido-match (ido-completing-read "Where to jump: " (--map (ov-val it 'bjump-id) ovs))))
-       (nth (--find-index (equal ido-match (ov-val it 'bjump-id)) ovs) ovs)))
-   (lambda (ov)
-     (select-window (ov-val ov 'bjump-window)))
-   (list :after-action 'bjump-window-jump-after-action-hook)))
+
+;;; other helpers
 
 (defun bjump-jump (selector window-scope frame-scope picker action &optional hooks)
   "SELECTOR is where to put hints (is regexp or function, function returns ((beg . end)*)).
@@ -137,6 +119,46 @@ different hooks, therefore we let the callee provide those."
             (funcall action picked-match)))
       (--each ovs (delete-overlay it))
       (run-hooks (plist-get hooks :after-action)))))
+
+
+;;; interactive
+(defun bjump-word-jump (head-char)
+  (interactive "cHead char: ")
+  (bjump-jump
+   (concat "\\<" (char-to-string head-char))
+   (lambda (_) (bjump-buffer-window-bounds))
+   (lambda () (list (car (window-list))))
+   (lambda (ovs) (let ((ido-match (ido-completing-read "Where to jump: " (--map (ov-val it 'bjump-id) ovs))))
+                   (nth (--find-index (equal ido-match (ov-val it 'bjump-id)) ovs) ovs)))
+   (lambda (ov) (goto-char (ov-beg ov)))))
+
+(defun bjump-line-word-jump (head-char)
+  (interactive "cHead char: ")
+  (bjump-jump
+   (concat "\\<" (char-to-string head-char))
+   (lambda (_) (cons (line-beginning-position) (line-end-position)))
+   (lambda () (list (car (window-list))))
+   (lambda (ovs) (let ((ido-match (ido-completing-read "Where to jump: " (--map (ov-val it 'bjump-id) ovs))))
+                   (nth (--find-index (equal ido-match (ov-val it 'bjump-id)) ovs) ovs)))
+   (lambda (ov) (goto-char (ov-beg ov)))))
+
+(defun bjump-window-jump ()
+  (interactive)
+  (bjump-jump
+   (lambda (_ _) (save-excursion
+                   (move-to-window-line 0)
+                   (list (cons (point) (point)))))
+   (lambda (_) (cons 1 1)) ;; this is ignored by the selector
+   (lambda () (--remove (equal it (selected-window))
+                        (--mapcat (window-list it) (visible-frame-list))))
+   (lambda (ovs)
+     ;; sort the overlays here in some manner
+     (--map (overlay-put it 'before-string (overlay-get it 'bjump-id)) ovs)
+     (let ((ido-match (ido-completing-read "Where to jump: " (--map (ov-val it 'bjump-id) ovs))))
+       (nth (--find-index (equal ido-match (ov-val it 'bjump-id)) ovs) ovs)))
+   (lambda (ov)
+     (select-window (ov-val ov 'bjump-window)))
+   (list :after-action 'bjump-window-jump-after-action-hook)))
 
 (provide 'better-jump)
 ;;; better-jump.el ends here
