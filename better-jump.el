@@ -57,10 +57,12 @@
   (bjump-jump
    (concat "\\<" (char-to-string head-char))
    (lambda (_) (bjump-buffer-window-bounds))
-   (lambda () (list (car (window-list))))
+   (lambda () (window-list))
    (lambda (ovs) (let ((ido-match (ido-completing-read "Where to jump: " (--map (ov-val it 'bjump-id) ovs))))
                    (nth (--find-index (equal ido-match (ov-val it 'bjump-id)) ovs) ovs)))
-   (lambda (ov) (goto-char (ov-beg ov)))))
+   (lambda (ov)
+     (select-window (ov-val ov 'bjump-window))
+     (goto-char (ov-beg ov)))))
 
 (defun bjump-line-word-jump (head-char)
   (interactive "cHead char: ")
