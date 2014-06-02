@@ -52,13 +52,20 @@
 (defun bjump-jump (selector window-scope frame-scope picker action)
   "SELECTOR is where to put hints (is regexp or function).
 
+(defun bjump-jump (selector window-scope frame-scope picker action &optional hooks)
+  "SELECTOR is where to put hints (is regexp or function, function returns ((beg . end)*)).
+
 WINDOW-SCOPE is how to narrow window (takes window, return (beg . end)).
 
 FRAME-SCOPE is which windows to pick (return a list of windows)
 
 PICKER is a procedure which picks the match (can be interactive or procedural, recieves the overlay list)
 
-ACTION is what to do with the picked match (takes matched overlay)."
+ACTION is what to do with the picked match (takes matched overlay).
+
+HOOKS is a list of actions to run at specific places.  Global
+hooks do not make sense because each jump action might need
+different hooks, therefore we let the callee provide those."
   (let ((ovs))
     (unwind-protect
         (progn
@@ -68,18 +75,30 @@ ACTION is what to do with the picked match (takes matched overlay)."
                 (select-window win)
                 (let* ((scope (funcall window-scope win))
                        (beg (car scope))
-                       (end (cdr scope)))
-                  (setq ovs (-concat (ov-regexp selector beg end) ovs))))))
+                       (end (cdr scope))
+                       new-ovs)
+                  ;; this will need to handle situation when two
+                  ;; windows are showing the same buffer. ajm uses
+                  ;; indirect buffers, but that seems a bit overkill.
+                  (cond
+                   ((stringp selector)
+                    (setq new-ovs (ov-regexp selector beg end)))
+                   (t
+                    (let ((bounds (funcall selector beg end)))
+                      (setq new-ovs (--map (make-overlay (car it) (cdr it)) bounds)))))
+                  (setq ovs (-concat (ov-set new-ovs 'bjump-window win) ovs))))))
           (setq ovs (nreverse ovs))
           (--each ovs
             (ov-set it
                     'display (int-to-string it-index)
                     'face 'font-lock-warning-face
+                    'evaporate nil
                     'bjump-ov t
                     'bjump-id (int-to-string it-index)))
           (let ((picked-match (funcall picker ovs)))
             (funcall action picked-match)))
-      (--each ovs (delete-overlay it)))))
+      (--each ovs (delete-overlay it))
+      (run-hooks (plist-get hooks :after-action)))))
 
 (provide 'better-jump)
 ;;; better-jump.el ends here
