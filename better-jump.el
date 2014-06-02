@@ -50,7 +50,7 @@
 ;; also style the window nicely.  Could display the entire hint or
 ;; just first letter like ace-jump-mode does.  The hint display text
 ;; could be modified dynamically to reflect changes made by the
-;; read-loop.
+;; read-loop.  Should also take prompt and stuff.
 
 (defun bjump-word-jump (head-char)
   (interactive "cHead char: ")
@@ -62,11 +62,11 @@
                    (nth (--find-index (equal ido-match (ov-val it 'bjump-id)) ovs) ovs)))
    (lambda (ov) (goto-char (ov-beg ov)))))
 
-(defun bjump-word-jump (head-char)
+(defun bjump-line-word-jump (head-char)
   (interactive "cHead char: ")
   (bjump-jump
    (concat "\\<" (char-to-string head-char))
-   (lambda (_) (bjump-buffer-window-bounds))
+   (lambda (_) (cons (line-beginning-position) (line-end-position)))
    (lambda () (list (car (window-list))))
    (lambda (ovs) (let ((ido-match (ido-completing-read "Where to jump: " (--map (ov-val it 'bjump-id) ovs))))
                    (nth (--find-index (equal ido-match (ov-val it 'bjump-id)) ovs) ovs)))
