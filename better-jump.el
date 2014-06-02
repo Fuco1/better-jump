@@ -42,20 +42,72 @@
 
 ;;; selectors
 
+(defun bjump-selector-char (char)
+  "Return a regexp matching CHAR at the beginning of a word."
+  (concat "\\<" (char-to-string char)))
+
 
 ;;; window scope
-(defun bjump-buffer-window-bounds ()
-  "Get the buffer bounds of current window."
+(defun bjump-ws-window-bounds ()
+  "Get the bounds of the portion of buffer visible in current window."
   (save-excursion
-    (cons (progn
-            (move-to-window-line 0)
-            (point))
-          (progn
-            (move-to-window-line -1)
-            (line-end-position)))))
+    (cons (progn (move-to-window-line 0) (point))
+          (progn (move-to-window-line -1) (line-end-position)))))
+
+(defun bjump-ws-line-bounds ()
+  "Get the line bounds at point."
+  (cons (line-beginning-position) (line-end-position)))
+
+(defun bjump-ws-paragraph-bounds ()
+  "Get the paragraph bounds at point."
+  (save-excursion
+    (let ((end (progn (forward-paragraph) (point)))
+          (beg (progn (backward-paragraph ) (point)) ))
+      (cons beg end))))
+
+(defun bjump-ws-ignore ()
+  "Return default value of the window scope.
+
+Useful when the selector does not depend on this value."
+  (cons 1 1))
 
 
 ;;; frame scope
+;; "frame scope" resolution is used to pick windows in which the
+;; jumper should operate.  It should return list of windows we
+;; consider "workable".  Note especially that you have to return a
+;; list even if you only want one window
+;; (cf. `bjump-fs-current-window').  The windows are then selected in
+;; order of the returned list, so if you want some special ordering,
+;; order them here.
+
+(defun bjump-fs-current-window ()
+  "Return just the current window."
+  (list (car (window-list))))
+
+(defun bjump-fs-current-frame ()
+  "Return all windows in current frame, ordered by `next-window'."
+  (window-list))
+
+(defun bjump-fs-current-frame-nsw ()
+  "Return all windows in current frame, but not the selected window.
+
+Ordered by `next-window'."
+  (--remove (equal it (selected-window)) (window-list)))
+
+(defun bjump-fs-visible-frames ()
+  "Return all windows in all visible frames.
+
+Ordered by `next-window' and `visible-frame-list'."
+  (--mapcat (window-list it) (visible-frame-list)))
+
+(defun bjump-fs-visible-frames-nsw ()
+  "Return all windows in all visible frames, but not the selected window.
+
+Ordered by `next-window' and `visible-frame-list'."
+  (--remove (equal it (selected-window))
+            (--mapcat (window-list it) (visible-frame-list))))
+
 
 
 ;;; pickers
@@ -69,13 +121,31 @@
 
 ;;; actions
 
+(defun bjump-action-goto-char (ov)
+  "Select the frame and window where OV is placed, then go to the beginning of OV."
+  (let ((win (ov-val ov 'bjump-window)))
+    (select-frame-set-input-focus (window-frame win))
+    (select-window win)
+    (goto-char (ov-beg ov))))
+
+(defun bjump-action-goto-window (ov)
+  "Select the frame and window where OV is placed."
+  (let ((win (ov-val ov 'bjump-window)))
+    (select-frame-set-input-focus (window-frame win))
+    (select-window win)))
+
+(defun bjump-action-goto-frame (ov)
+  "Select the frame where OV is placed."
+  (let ((win (ov-val ov 'bjump-window)))
+    (select-frame-set-input-focus (window-frame win))))
+
 
 ;;; other helpers
 
 (defun bjump-jump (selector window-scope frame-scope picker action &optional hooks)
   "SELECTOR is where to put hints (is regexp or function, function returns ((beg . end)*)).
 
-WINDOW-SCOPE is how to narrow window (takes window, return (beg . end)).
+WINDOW-SCOPE is how to narrow window (executes in \"current window\", return (beg . end)).
 
 FRAME-SCOPE is which windows to pick (return a list of windows)
 
@@ -93,7 +163,7 @@ different hooks, therefore we let the callee provide those."
             (lambda (win)
               (save-window-excursion
                 (select-window win)
-                (let* ((scope (funcall window-scope win))
+                (let* ((scope (funcall window-scope))
                        (beg (car scope))
                        (end (cdr scope))
                        new-ovs)
@@ -125,22 +195,32 @@ different hooks, therefore we let the callee provide those."
 (defun bjump-word-jump (head-char)
   (interactive "cHead char: ")
   (bjump-jump
-   (concat "\\<" (char-to-string head-char))
-   (lambda (_) (bjump-buffer-window-bounds))
-   (lambda () (list (car (window-list))))
+   (bjump-selector-char head-char)
+   'bjump-ws-window-bounds
+   'bjump-fs-current-window
    (lambda (ovs) (let ((ido-match (ido-completing-read "Where to jump: " (--map (ov-val it 'bjump-id) ovs))))
                    (nth (--find-index (equal ido-match (ov-val it 'bjump-id)) ovs) ovs)))
-   (lambda (ov) (goto-char (ov-beg ov)))))
+   'bjump-action-goto-char))
 
-(defun bjump-line-word-jump (head-char)
+(defun bjump-word-jump-line (head-char)
   (interactive "cHead char: ")
   (bjump-jump
-   (concat "\\<" (char-to-string head-char))
-   (lambda (_) (cons (line-beginning-position) (line-end-position)))
-   (lambda () (list (car (window-list))))
+   (bjump-selector-char head-char)
+   'bjump-ws-line-bounds
+   'bjump-fs-current-window
    (lambda (ovs) (let ((ido-match (ido-completing-read "Where to jump: " (--map (ov-val it 'bjump-id) ovs))))
                    (nth (--find-index (equal ido-match (ov-val it 'bjump-id)) ovs) ovs)))
-   (lambda (ov) (goto-char (ov-beg ov)))))
+   'bjump-action-goto-char))
+
+(defun bjump-word-jump-paragraph (head-char)
+  (interactive "cHead char: ")
+  (bjump-jump
+   (bjump-selector-char head-char)
+   'bjump-ws-paragraph-bounds
+   'bjump-fs-current-window
+   (lambda (ovs) (let ((ido-match (ido-completing-read "Where to jump: " (--map (ov-val it 'bjump-id) ovs))))
+                   (nth (--find-index (equal ido-match (ov-val it 'bjump-id)) ovs) ovs)))
+   'bjump-action-goto-char))
 
 (defun bjump-window-jump ()
   (interactive)
@@ -148,16 +228,14 @@ different hooks, therefore we let the callee provide those."
    (lambda (_ _) (save-excursion
                    (move-to-window-line 0)
                    (list (cons (point) (point)))))
-   (lambda (_) (cons 1 1)) ;; this is ignored by the selector
-   (lambda () (--remove (equal it (selected-window))
-                        (--mapcat (window-list it) (visible-frame-list))))
+   'bjump-ws-ignore
+   'bjump-fs-visible-frames-nsw
    (lambda (ovs)
      ;; sort the overlays here in some manner
      (--map (overlay-put it 'before-string (overlay-get it 'bjump-id)) ovs)
      (let ((ido-match (ido-completing-read "Where to jump: " (--map (ov-val it 'bjump-id) ovs))))
        (nth (--find-index (equal ido-match (ov-val it 'bjump-id)) ovs) ovs)))
-   (lambda (ov)
-     (select-window (ov-val ov 'bjump-window)))
+   'bjump-action-goto-window
    (list :after-action 'bjump-window-jump-after-action-hook)))
 
 (provide 'better-jump)
