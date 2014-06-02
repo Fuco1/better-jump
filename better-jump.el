@@ -1,4 +1,4 @@
-;;; better-jump.el --- Execute actions at places.
+;;; better-jump.el --- Execute actions at places. -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2014 Matúš Goljer <matus.goljer@gmail.com>
 
