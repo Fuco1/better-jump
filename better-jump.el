@@ -30,18 +30,40 @@
 (require 'ov)
 
 
-;;; user settings
+;;; User settings
+;; Hooks should be used by *end-users only* to modify or customize the
+;; behaviour of the "jumpers".  The jumpers themselves should *NOT*
+;; rely on the hook mechanisms, instead, they should use the
+;; operations prescribed in `bjump-jump'.
 
 ;; add more hooks
+(defcustom bjump-window-jump-before-action-hook ()
+  "Hook run before the jump to another window.
+
+When this hook runs, the selected window is the window from which
+we want to jump away."
+  :type 'hook
+  :group 'bjump)
+
 (defcustom bjump-window-jump-after-action-hook ()
-  "Hook run after the action has been executed and all the bjump
-  overlays were cleared."
+  "Hook run after the jump to another window.
+
+When this hook runs, the selected window is the window to which
+we jumped."
+  :type 'hook
+  :group 'bjump)
+
+(defcustom bjump-window-jump-after-cleanup-hook ()
+  "Hook run after the cleanup.
+
+This hook is run even in the case the operation was cancelled, so
+there is no guarantee about which window is the selected one."
   :type 'hook
   :group 'bjump)
 
 ;; TODO: sync these docs into `bjump-jump'.
 
-;;; selectors
+;;; Selectors
 ;; ...
 
 (defun bjump-selector-char (char)
@@ -49,7 +71,7 @@
   (concat "\\<" (char-to-string char)))
 
 
-;;; window scope
+;;; Window scope
 ;; "window scope" resolution is useful to narrow down the region of
 ;; the visible portion of window from where candidates should be
 ;; picked.  It should return bounds of the region.  These bounds
@@ -82,7 +104,7 @@ Useful when the selector does not depend on this value."
   (cons 1 1))
 
 
-;;; frame scope
+;;; Frame scope
 ;; "frame scope" resolution is used to pick windows in which the
 ;; jumper should operate.  It should return list of windows we
 ;; consider "workable".  Note especially that you have to return a
@@ -120,7 +142,7 @@ Ordered by `next-window' and `visible-frame-list'."
 
 
 
-;;; pickers
+;;; Pickers
 
 ;; TODO: write some more generic "hint select function" that would
 ;; also style the window nicely.  Could display the entire hint or
@@ -129,7 +151,7 @@ Ordered by `next-window' and `visible-frame-list'."
 ;; read-loop.  Should also take prompt and stuff.
 
 
-;;; actions
+;;; Actions
 ;; Action executed at the picked overlay.  This gets the overlay as an
 ;; argument an can do any action whatsoever.  At the time this
 ;; function is run, selected window is the window from where the jump
@@ -155,7 +177,7 @@ Ordered by `next-window' and `visible-frame-list'."
     (select-frame-set-input-focus (window-frame win))))
 
 
-;;; other helpers
+;;; Other helpers
 
 (defun bjump-jump (selector window-scope frame-scope picker action &optional hooks)
   "SELECTOR is where to put hints (is regexp or function, function returns ((beg . end)*)).
@@ -201,12 +223,14 @@ different hooks, therefore we let the callee provide those."
                     'bjump-ov t
                     'bjump-id (int-to-string it-index)))
           (let ((picked-match (funcall picker ovs)))
-            (funcall action picked-match)))
+            (run-hooks (plist-get hooks :before-action))
+            (funcall action picked-match)
+            (run-hooks (plist-get hooks :after-action))))
       (--each ovs (delete-overlay it))
-      (run-hooks (plist-get hooks :after-action)))))
+      (run-hooks (plist-get hooks :after-cleanup)))))
 
 
-;;; interactive
+;;; Interactive
 (defun bjump-word-jump (head-char)
   (interactive "cHead char: ")
   (bjump-jump
@@ -251,7 +275,9 @@ different hooks, therefore we let the callee provide those."
      (let ((ido-match (ido-completing-read "Where to jump: " (--map (ov-val it 'bjump-id) ovs))))
        (nth (--find-index (equal ido-match (ov-val it 'bjump-id)) ovs) ovs)))
    'bjump-action-goto-window
-   (list :after-action 'bjump-window-jump-after-action-hook)))
+   (list :before-action 'bjump-window-jump-before-action-hook
+         :after-action 'bjump-window-jump-after-action-hook
+         :after-cleanup 'bjump-window-jump-after-cleanup-hook)))
 
 (provide 'better-jump)
 ;;; better-jump.el ends here
