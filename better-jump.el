@@ -323,6 +323,11 @@ different hooks, therefore we let the callee provide those."
       (--each ovs (delete-overlay it))
       (run-hooks (plist-get hooks :after-cleanup)))))
 
+(defmacro bjump-jump-cw (selector picker action &optional hooks)
+  "Same as `bjump-jump' but preset current window with no restrictions."
+  `(bjump-jump ,selector 'bjump-ws-window-bounds 'bjump-fs-current-window
+               ,picker ,action ,@hooks))
+
 
 ;;; Interactive
 (defun bjump-word-jump (head-char)
