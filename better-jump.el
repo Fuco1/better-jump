@@ -1,4 +1,4 @@
-;;; better-jump.el --- Execute actions at places. -*- lexical-binding: t -*-
+;;; better-jump.el --- Execute actions at places -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2014 Matúš Goljer <matus.goljer@gmail.com>
 
@@ -28,6 +28,11 @@
 
 (require 'dash)
 (require 'ov)
+
+(defgroup bjump ()
+  "Execute actions at places."
+  :group 'editing
+  :prefix "bjump-")
 
 
 ;;; User settings
@@ -144,11 +149,86 @@ Ordered by `next-window' and `visible-frame-list'."
 
 ;;; Pickers
 
-;; TODO: write some more generic "hint select function" that would
-;; also style the window nicely.  Could display the entire hint or
-;; just first letter like ace-jump-mode does.  The hint display text
-;; could be modified dynamically to reflect changes made by the
-;; read-loop.  Should also take prompt and stuff.
+(defface bjump-hint-background
+  '((t (:foreground "gray40")))
+  "Background face for the entire visible buffer region."
+  :group 'bjump)
+
+(defface bjump-hint-foreground
+  '((((class color)) (:foreground "red"))
+    (((background dark)) (:foreground "gray100"))
+    (((background light)) (:foreground "gray0"))
+    (t (:foreground "gray100")))
+  "Background face used for hints during hint picking."
+  :group 'bjump)
+
+(defface bjump-hint-foreground-window-picker
+  '((((class color)) (:foreground "red" :height 1000))
+    (((background dark)) (:foreground "gray100"))
+    (((background light)) (:foreground "gray0"))
+    (t (:foreground "gray100")))
+  "Background face used for hints during hint picking."
+  :group 'bjump)
+
+(defcustom bjump-picker-single-letter-list "asdfghjklqwertyuiopzxcvbnm"
+  "List of letters to use to pick from the selected values.
+
+These are used in order as specified in the string, so put your
+most preferred letters first (for example, the home-row)."
+  :type 'string
+  :group 'bjump)
+
+;; The picker here should be the "default", emulating ace-jump-mode
+;; picker.  But I can imagine tons of other ways to select matches.
+
+;; TODO: abstract into a generic picker
+;; - face
+;; - initial label generator
+;; - label updater after each picked letter
+;; - prompt
+(defun bjump-picker-single-letter (ovs)
+  (let* ((num-choices (length bjump-picker-single-letter-list))
+         (num-selected (length ovs))
+         (visible-windows (-map 'car (--group-by (ov-val it :bjump-window) ovs)))
+         (background-ovs (--map (save-window-excursion
+                                  (select-window it)
+                                  (let ((bounds (bjump-ws-window-bounds)))
+                                    (ov (car bounds) (cdr bounds) 'face 'bjump-hint-background)))
+                                visible-windows)))
+    (unwind-protect
+        (cond
+         ((= num-selected 0) nil)
+         ((= num-selected 1) (car ovs))
+         (t
+          (let* ((depth (1+ (floor (log num-selected num-choices))))
+                 (ov-labels
+                  (apply '-table-flat (lambda (&rest stuff)
+                                        (apply 'string (nreverse stuff)))
+                         (-repeat depth (string-to-list bjump-picker-single-letter-list))))
+                 (r nil)
+                 (current-label "")
+                 (i 1))
+            (setq ovs (--zip-with (car (ov-set it
+                                               'priority 100
+                                               'display
+                                               (bjump-substr other 0 1 'face 'bjump-hint-foreground)
+                                               :bjump-label other))
+                                  ovs ov-labels))
+            (while (and (not r) (<= i depth))
+              (let ((current-str (char-to-string (read-char "Where to jump: "))))
+                (setq current-label (concat current-label current-str))
+                (let ((sep (--separate (string-prefix-p current-label (ov-val it :bjump-label)) ovs)))
+                  (--each (cadr sep) (ov-set it 'display nil))
+                  (--each (car sep) (let ((label (ov-val it :bjump-label)))
+                                      (ov-set it 'display (bjump-substr
+                                                           label i (1+ i)
+                                                           'face 'bjump-hint-foreground))))
+                  (setq ovs (car sep)))
+                (-when-let (ov (--first (equal (ov-val it :bjump-label) current-label) ovs))
+                  (setq r ov)))
+              (cl-incf i))
+            r)))
+      (-map 'delete-overlay background-ovs))))
 
 
 ;;; Actions
@@ -156,28 +236,41 @@ Ordered by `next-window' and `visible-frame-list'."
 ;; argument an can do any action whatsoever.  At the time this
 ;; function is run, selected window is the window from where the jump
 ;; function was called.  You can get the window where this overlay is
-;; defined by getting the property `bjump-window' from the overlay.
+;; defined by getting the property `:bjump-window' from the overlay.
 
 (defun bjump-action-goto-char (ov)
   "Select the frame and window where OV is placed, then go to the beginning of OV."
-  (let ((win (ov-val ov 'bjump-window)))
+  (let ((win (ov-val ov :bjump-window)))
     (select-frame-set-input-focus (window-frame win))
     (select-window win)
     (goto-char (ov-beg ov))))
 
 (defun bjump-action-goto-window (ov)
   "Select the frame and window where OV is placed."
-  (let ((win (ov-val ov 'bjump-window)))
+  (let ((win (ov-val ov :bjump-window)))
     (select-frame-set-input-focus (window-frame win))
     (select-window win)))
 
 (defun bjump-action-goto-frame (ov)
   "Select the frame where OV is placed."
-  (let ((win (ov-val ov 'bjump-window)))
+  (let ((win (ov-val ov :bjump-window)))
     (select-frame-set-input-focus (window-frame win))))
 
 
 ;;; Other helpers
+
+;; TODO: put this into s.el?
+(defun bjump-substr (string beg end &rest props)
+  "Return substring of STRING from BEG to END, starting from zero.
+
+If END is greater than the length of the string, the portion from
+BEG to the end of string is returned.
+
+PROPS is a list of property and value pairs to be applied to the
+extracted substring."
+  (let ((l (length string)))
+    (setq end (min end l))
+    (apply 'propertize (substring string beg end) props)))
 
 (defun bjump-jump (selector window-scope frame-scope picker action &optional hooks)
   "SELECTOR is where to put hints (is regexp or function, function returns ((beg . end)*)).
@@ -213,19 +306,20 @@ different hooks, therefore we let the callee provide those."
                    (t
                     (let ((bounds (funcall selector beg end)))
                       (setq new-ovs (--map (make-overlay (car it) (cdr it)) bounds)))))
-                  (setq ovs (-concat (ov-set new-ovs 'bjump-window win) ovs))))))
+                  (setq ovs (-concat (ov-set new-ovs :bjump-window win) ovs))))))
           (setq ovs (nreverse ovs))
           (--each ovs
             (ov-set it
-                    'display (int-to-string it-index)
-                    'face 'font-lock-warning-face
                     'evaporate nil
-                    'bjump-ov t
-                    'bjump-id (int-to-string it-index)))
-          (let ((picked-match (funcall picker ovs)))
-            (run-hooks (plist-get hooks :before-action))
-            (funcall action picked-match)
-            (run-hooks (plist-get hooks :after-action))))
+                    :bjump-ov t
+                    :bjump-id (int-to-string it-index)))
+          (-if-let (picked-match (funcall picker ovs))
+              (progn
+                (run-hooks (plist-get hooks :before-action))
+                (funcall action picked-match)
+                (run-hooks (plist-get hooks :after-action)))
+            ;; make these messages better and non-annoying somehow.
+            (message "[better jump] No match")))
       (--each ovs (delete-overlay it))
       (run-hooks (plist-get hooks :after-cleanup)))))
 
@@ -237,8 +331,7 @@ different hooks, therefore we let the callee provide those."
    (bjump-selector-char head-char)
    'bjump-ws-window-bounds
    'bjump-fs-current-window
-   (lambda (ovs) (let ((ido-match (ido-completing-read "Where to jump: " (--map (ov-val it 'bjump-id) ovs))))
-                   (nth (--find-index (equal ido-match (ov-val it 'bjump-id)) ovs) ovs)))
+   'bjump-picker-single-letter
    'bjump-action-goto-char))
 
 (defun bjump-word-jump-line (head-char)
@@ -247,8 +340,7 @@ different hooks, therefore we let the callee provide those."
    (bjump-selector-char head-char)
    'bjump-ws-line-bounds
    'bjump-fs-current-window
-   (lambda (ovs) (let ((ido-match (ido-completing-read "Where to jump: " (--map (ov-val it 'bjump-id) ovs))))
-                   (nth (--find-index (equal ido-match (ov-val it 'bjump-id)) ovs) ovs)))
+   'bjump-picker-single-letter
    'bjump-action-goto-char))
 
 (defun bjump-word-jump-paragraph (head-char)
@@ -257,8 +349,7 @@ different hooks, therefore we let the callee provide those."
    (bjump-selector-char head-char)
    'bjump-ws-paragraph-bounds
    'bjump-fs-current-window
-   (lambda (ovs) (let ((ido-match (ido-completing-read "Where to jump: " (--map (ov-val it 'bjump-id) ovs))))
-                   (nth (--find-index (equal ido-match (ov-val it 'bjump-id)) ovs) ovs)))
+   'bjump-picker-single-letter
    'bjump-action-goto-char))
 
 (defun bjump-window-jump ()
@@ -266,14 +357,10 @@ different hooks, therefore we let the callee provide those."
   (bjump-jump
    (lambda (_ _) (save-excursion
                    (move-to-window-line 0)
-                   (list (cons (point) (point)))))
+                   (list (cons (point) (1+ (point))))))
    'bjump-ws-ignore
    'bjump-fs-visible-frames-nsw
-   (lambda (ovs)
-     ;; sort the overlays here in some manner
-     (--map (overlay-put it 'before-string (overlay-get it 'bjump-id)) ovs)
-     (let ((ido-match (ido-completing-read "Where to jump: " (--map (ov-val it 'bjump-id) ovs))))
-       (nth (--find-index (equal ido-match (ov-val it 'bjump-id)) ovs) ovs)))
+   'bjump-picker-single-letter
    'bjump-action-goto-window
    (list :before-action 'bjump-window-jump-before-action-hook
          :after-action 'bjump-window-jump-after-action-hook
