@@ -367,5 +367,36 @@ different hooks, therefore we let the callee provide those."
    :after-action-hook 'bjump-window-jump-after-action-hook
    :after-cleanup-hook 'bjump-window-jump-after-cleanup-hook))
 
+(defun bjump-help-link-jump ()
+  (interactive)
+  (bjump-jump
+   (lambda (beg end)
+     (save-excursion
+       (let (b buttons)
+         (goto-char beg)
+         (while (and (setq b (ignore-errors (forward-button 1)))
+                     (< b end))
+           (push (cons (marker-position b)
+                       (1+ (marker-position b)))
+                 buttons))
+         (nreverse buttons))))
+   :action (bjump-action-goto-char-and-execute-action
+            'push-button)))
+
+(defun bjump-info-link-jump ()
+  (interactive)
+  (bjump-jump
+   (lambda (beg end)
+     (save-excursion
+       (let (n nodes)
+         (goto-char beg)
+         (while (and (ignore-errors (Info-next-reference) t)
+                     (< (point) end)
+                     (if nodes (> (point) (caar nodes)) t))
+           (push (cons (point) (1+ (point))) nodes))
+         (nreverse nodes))))
+   :action (bjump-action-goto-char-and-execute-action
+            'Info-follow-nearest-node)))
+
 (provide 'better-jump)
 ;;; better-jump.el ends here
