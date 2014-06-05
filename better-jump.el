@@ -312,14 +312,13 @@ different hooks, therefore we let the callee provide those."
                   ;; indirect buffers, but that seems a bit overkill.
                   (cond
                    ((characterp selector)
-                    (setq new-ovs (ov-regexp (bjump-selector-char selector) beg end)))
+                    (setq new-ovs (nreverse (ov-regexp (bjump-selector-char selector) beg end))))
                    ((stringp selector)
-                    (setq new-ovs (ov-regexp selector beg end)))
+                    (setq new-ovs (nreverse (ov-regexp selector beg end))))
                    (t
                     (let ((bounds (funcall selector beg end)))
                       (setq new-ovs (--map (make-overlay (car it) (cdr it)) bounds)))))
-                  (setq ovs (-concat (ov-set new-ovs :bjump-window win) ovs))))))
-          (setq ovs (nreverse ovs))
+                  (setq ovs (-concat ovs (ov-set new-ovs :bjump-window win)))))))
           (--each ovs
             (ov-set it
                     'evaporate nil
