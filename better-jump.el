@@ -257,6 +257,12 @@ most preferred letters first (for example, the home-row)."
   (let ((win (ov-val ov :bjump-window)))
     (select-frame-set-input-focus (window-frame win))))
 
+(defun bjump-action-goto-char-and-execute-action (action)
+  "Select the frame and window where OV is placed, then go to the beginning of OV."
+  (lambda (ov)
+    (bjump-action-goto-char ov)
+    (funcall action)))
+
 
 ;;; Other helpers
 
