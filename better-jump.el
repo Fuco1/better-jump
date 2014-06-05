@@ -180,6 +180,7 @@ most preferred letters first (for example, the home-row)."
 
 ;; The picker here should be the "default", emulating ace-jump-mode
 ;; picker.  But I can imagine tons of other ways to select matches.
+;; probably convert this to a generic taking tons of keyword args
 
 ;; TODO: abstract into a generic picker
 ;; - face
@@ -272,8 +273,17 @@ extracted substring."
     (setq end (min end l))
     (apply 'propertize (substring string beg end) props)))
 
-(defun bjump-jump (selector window-scope frame-scope picker action &optional hooks)
-  "SELECTOR is where to put hints (is regexp or function, function returns ((beg . end)*)).
+
+(defun* bjump-jump (selector
+                    &key
+                    (window-scope 'bjump-ws-window-bounds)
+                    (frame-scope 'bjump-fs-current-window)
+                    (picker 'bjump-picker-single-letter)
+                    (action 'bjump-action-goto-char)
+                    before-action-hook
+                    after-action-hook
+                    after-cleanup-hook)
+  "SELECTOR is where to put hints (is regexp or char or function, function returns ((beg . end)*)).
 
 WINDOW-SCOPE is how to narrow window (executes in \"current window\", return (beg . end)).
 
@@ -301,6 +311,8 @@ different hooks, therefore we let the callee provide those."
                   ;; windows are showing the same buffer. ajm uses
                   ;; indirect buffers, but that seems a bit overkill.
                   (cond
+                   ((characterp selector)
+                    (setq new-ovs (ov-regexp (bjump-selector-char selector) beg end)))
                    ((stringp selector)
                     (setq new-ovs (ov-regexp selector beg end)))
                    (t
@@ -315,47 +327,27 @@ different hooks, therefore we let the callee provide those."
                     :bjump-id (int-to-string it-index)))
           (-if-let (picked-match (funcall picker ovs))
               (progn
-                (run-hooks (plist-get hooks :before-action))
+                (run-hooks before-action-hook)
                 (funcall action picked-match)
-                (run-hooks (plist-get hooks :after-action)))
+                (run-hooks after-action-hook))
             ;; make these messages better and non-annoying somehow.
             (message "[better jump] No match")))
       (--each ovs (delete-overlay it))
-      (run-hooks (plist-get hooks :after-cleanup)))))
-
-(defmacro bjump-jump-cw (selector picker action &optional hooks)
-  "Same as `bjump-jump' but preset current window with no restrictions."
-  `(bjump-jump ,selector 'bjump-ws-window-bounds 'bjump-fs-current-window
-               ,picker ,action ,@hooks))
+      (run-hooks after-cleanup-hook))))
 
 
 ;;; Interactive
 (defun bjump-word-jump (head-char)
   (interactive "cHead char: ")
-  (bjump-jump
-   (bjump-selector-char head-char)
-   'bjump-ws-window-bounds
-   'bjump-fs-current-window
-   'bjump-picker-single-letter
-   'bjump-action-goto-char))
+  (bjump-jump head-char))
 
 (defun bjump-word-jump-line (head-char)
   (interactive "cHead char: ")
-  (bjump-jump
-   (bjump-selector-char head-char)
-   'bjump-ws-line-bounds
-   'bjump-fs-current-window
-   'bjump-picker-single-letter
-   'bjump-action-goto-char))
+  (bjump-jump head-char :window-scope 'bjump-ws-line-bounds))
 
 (defun bjump-word-jump-paragraph (head-char)
   (interactive "cHead char: ")
-  (bjump-jump
-   (bjump-selector-char head-char)
-   'bjump-ws-paragraph-bounds
-   'bjump-fs-current-window
-   'bjump-picker-single-letter
-   'bjump-action-goto-char))
+  (bjump-jump head-char :window-scope 'bjump-ws-paragraph-bounds))
 
 (defun bjump-window-jump ()
   (interactive)
@@ -363,13 +355,12 @@ different hooks, therefore we let the callee provide those."
    (lambda (_ _) (save-excursion
                    (move-to-window-line 0)
                    (list (cons (point) (1+ (point))))))
-   'bjump-ws-ignore
-   'bjump-fs-visible-frames-nsw
-   'bjump-picker-single-letter
-   'bjump-action-goto-window
-   (list :before-action 'bjump-window-jump-before-action-hook
-         :after-action 'bjump-window-jump-after-action-hook
-         :after-cleanup 'bjump-window-jump-after-cleanup-hook)))
+   :window-scope 'bjump-ws-ignore
+   :frame-scope 'bjump-fs-visible-frames-nsw
+   :action 'bjump-action-goto-window
+   :before-action-hook 'bjump-window-jump-before-action-hook
+   :after-action-hook 'bjump-window-jump-after-action-hook
+   :after-cleanup-hook 'bjump-window-jump-after-cleanup-hook))
 
 (provide 'better-jump)
 ;;; better-jump.el ends here
