@@ -208,11 +208,11 @@ most preferred letters first (for example, the home-row)."
                  (r nil)
                  (current-label "")
                  (i 1))
-            (setq ovs (--zip-with (car (ov-set it
-                                               'priority 100
-                                               'display
-                                               (bjump-substr other 0 1 'face 'bjump-hint-foreground)
-                                               :bjump-label other))
+            (setq ovs (--zip-with (ov-set it
+                                          'priority 100
+                                          'display
+                                          (bjump-substr other 0 1 'face 'bjump-hint-foreground)
+                                          :bjump-label other)
                                   ovs ov-labels))
             (while (and (not r) (<= i depth))
               (let ((current-str (char-to-string (read-char "Where to jump: "))))
