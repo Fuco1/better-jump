@@ -291,6 +291,13 @@ extracted substring."
     (setq end (min end l))
     (apply 'propertize (substring string beg end) props)))
 
+(defun bjump-point-1 ()
+  "Return (cons (1- (point)) (point))."
+  (cons (1- (point)) (point)))
+
+(defun bjump-point+1 ()
+  "Return (cons (point) (1+ (point)))."
+  (cons (point) (1+ (point))))
 
 (defun* bjump-jump (selector
                     &key
@@ -371,7 +378,7 @@ different hooks, therefore we let the callee provide those."
   (bjump-jump
    (lambda (_ _) (save-excursion
                    (move-to-window-line 0)
-                   (list (cons (point) (1+ (point))))))
+                   (list (bjump-point+1))))
    :window-scope 'bjump-ws-ignore
    :frame-scope 'bjump-fs-visible-frames-nsw
    :action 'bjump-action-goto-window
@@ -379,6 +386,8 @@ different hooks, therefore we let the callee provide those."
    :after-action-hook 'bjump-window-jump-after-action-hook
    :after-cleanup-hook 'bjump-window-jump-after-cleanup-hook))
 
+;; TODO these "while stuff do stuff" loops repeat all over the place.
+;; Abstract it into some "collector" pattern
 (defun bjump-help-link-jump ()
   (interactive)
   (bjump-jump
@@ -404,7 +413,7 @@ different hooks, therefore we let the callee provide those."
          (while (and (ignore-errors (Info-next-reference) t)
                      (< (point) end)
                      (if nodes (> (point) (caar nodes)) t))
-           (push (cons (point) (1+ (point))) nodes))
+           (push (bjump-point+1) nodes))
          (nreverse nodes))))
    :action (bjump-com-goto-char-execute 'Info-follow-nearest-node)))
 
@@ -425,7 +434,7 @@ This command is called with point on the file we want to act upon."
          (goto-char beg)
          (while (< (point) end)
            (when (dired-get-filename nil t)
-             (push (cons (1- (point)) (point)) r))
+             (push (bjump-point-1) r))
            (dired-next-line 1))
          (nreverse r))))
    :action (bjump-com-goto-char-execute bjump-dired-open-command)))
