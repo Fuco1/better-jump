@@ -408,5 +408,27 @@ different hooks, therefore we let the callee provide those."
          (nreverse nodes))))
    :action (bjump-com-goto-char-execute 'Info-follow-nearest-node)))
 
+(defcustom bjump-dired-open-command 'dired-find-file
+  "Command to execute in `bjump-dired-jump'.
+
+This command is called with point on the file we want to act upon."
+  :type 'function
+  :group 'bjump)
+
+(defun bjump-dired-jump ()
+  "Run `bjump-dired-open-command' on a file."
+  (interactive)
+  (bjump-jump
+   (lambda (beg end)
+     (let (r)
+       (save-excursion
+         (goto-char beg)
+         (while (< (point) end)
+           (when (dired-get-filename nil t)
+             (push (cons (1- (point)) (point)) r))
+           (dired-next-line 1))
+         (nreverse r))))
+   :action (bjump-com-goto-char-execute bjump-dired-open-command)))
+
 (provide 'better-jump)
 ;;; better-jump.el ends here
