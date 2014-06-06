@@ -259,8 +259,18 @@ most preferred letters first (for example, the home-row)."
   (let ((win (ov-val ov :bjump-window)))
     (select-frame-set-input-focus (window-frame win))))
 
-(defun bjump-action-goto-char-and-execute-action (action)
-  "Select the frame and window where OV is placed, then go to the beginning of OV."
+
+;;; Action combinators
+;; Functions that take "actions" and combine them with other actions.
+;; This is basically the decorator pattern.
+
+(defun bjump-com-goto-char-execute (action)
+  "Combine `bjump-action-goto-char' with ACTION.
+
+First, run `bjump-action-goto-char'.  Then execute action.
+Action should be a zero-argument function.
+
+Return a function suitable for use in `bjump-jump' :action."
   (lambda (ov)
     (bjump-action-goto-char ov)
     (funcall action)))
@@ -382,8 +392,7 @@ different hooks, therefore we let the callee provide those."
                        (1+ (marker-position b)))
                  buttons))
          (nreverse buttons))))
-   :action (bjump-action-goto-char-and-execute-action
-            'push-button)))
+   :action (bjump-com-goto-char-execute 'push-button)))
 
 (defun bjump-info-link-jump ()
   (interactive)
@@ -397,8 +406,7 @@ different hooks, therefore we let the callee provide those."
                      (if nodes (> (point) (caar nodes)) t))
            (push (cons (point) (1+ (point))) nodes))
          (nreverse nodes))))
-   :action (bjump-action-goto-char-and-execute-action
-            'Info-follow-nearest-node)))
+   :action (bjump-com-goto-char-execute 'Info-follow-nearest-node)))
 
 (provide 'better-jump)
 ;;; better-jump.el ends here
