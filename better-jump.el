@@ -194,7 +194,9 @@ most preferred letters first (for example, the home-row)."
          (background-ovs (--map (save-window-excursion
                                   (select-window it)
                                   (let ((bounds (bjump-ws-window-bounds)))
-                                    (ov (car bounds) (cdr bounds) 'face 'bjump-hint-background)))
+                                    (ov (car bounds) (cdr bounds)
+                                        'face 'bjump-hint-background
+                                        'priority 10000)))
                                 visible-windows)))
     (unwind-protect
         (cond
@@ -210,7 +212,7 @@ most preferred letters first (for example, the home-row)."
                  (current-label "")
                  (i 1))
             (setq ovs (--zip-with (ov-set it
-                                          'priority 100
+                                          'priority 10001
                                           'display
                                           (bjump-substr other 0 1 'face 'bjump-hint-foreground)
                                           :bjump-label other)
