@@ -24,6 +24,8 @@
 
 ;;; Commentary:
 
+;; Read the docstring of `bjump-jump'.
+
 ;;; Code:
 
 (require 'dash)
@@ -45,7 +47,6 @@
 ;; TODO: sync these docs into `bjump-jump'.
 
 ;;; Selectors
-;; ...
 
 (defun bjump-selector-word-by-char (char)
   "Return a regexp matching CHAR at the beginning of a word."
@@ -53,11 +54,6 @@
 
 
 ;;; Window scope
-;; "window scope" resolution is useful to narrow down the region of
-;; the visible portion of window from where candidates should be
-;; picked.  It should return bounds of the region.  These bounds
-;; should not "overflow" the visible buffer region.
-
 ;; TODO: add more using `thingatpt' (defun, sentence), but guard for
 ;; "overflowing" the visible buffer area.
 
@@ -94,13 +90,6 @@ Useful when the selector does not depend on this value."
 
 
 ;;; Frame scope
-;; "frame scope" resolution is used to pick windows in which the
-;; jumper should operate.  It should return list of windows we
-;; consider "workable".  Note especially that you have to return a
-;; list even if you only want one window
-;; (cf. `bjump-fs-current-window').  The windows are then selected in
-;; order of the returned list, so if you want some special ordering,
-;; order them here.
 
 (defun bjump-fs-current-window ()
   "Return just the current window."
@@ -171,6 +160,7 @@ most preferred letters first (for example, the home-row)."
 ;; - initial label generator
 ;; - label updater after each picked letter
 ;; - prompt
+;; - it should be possible to also take the face to be used from the overlay itself
 (defun bjump-picker-single-letter (ovs)
   (let* ((num-choices (length bjump-picker-single-letter-list))
          (num-selected (length ovs))
@@ -219,11 +209,6 @@ most preferred letters first (for example, the home-row)."
 
 
 ;;; Actions
-;; Action executed at the picked overlay.  This gets the overlay as an
-;; argument an can do any action whatsoever.  At the time this
-;; function is run, selected window is the window from where the jump
-;; function was called.  You can get the window where this overlay is
-;; defined by getting the property `:bjump-window' from the overlay.
 
 (defun bjump-action-goto-char (ov &optional no-mark)
   "Select the frame and window where OV is placed, then go to the beginning of OV.
@@ -303,19 +288,76 @@ extracted substring."
                     before-action-hook
                     after-action-hook
                     after-cleanup-hook)
-  "SELECTOR is where to put hints (is regexp or char or function, function returns ((beg . end)*)).
+  "Execute action at a place.
 
-WINDOW-SCOPE is how to narrow window (executes in \"current window\", return (beg . end)).
+An \"action\" is an arbitrary piece of elisp code that does
+whatever.
 
-FRAME-SCOPE is which windows to pick (return a list of windows)
+A \"place\" or a \"candidate\" is a region inside a buffer upon
+which an action is executed.  Note that an action can also just
+ignore this information.
 
-PICKER is a procedure which picks the match (can be interactive or procedural, recieves the overlay list)
+A \"jumper\" is a concrete instance of this function with
+specified actions, places, scopes and so on.
 
-ACTION is what to do with the picked match (takes matched overlay).
+This function is the main engine behind all the \"jumpers\".  It
+is a higher-order function, taking other functions as arguments
+which modify its behaviour.  You can think of it as a
+\"skeleton\" with plug-able slots where you can put your own
+custom code.
 
-HOOKS is a list of actions to run at specific places.  Global
-hooks do not make sense because each jump action might need
-different hooks, therefore we let the callee provide those."
+SELECTOR specifies the places at which it is possible to execute
+an action.  It can be a character, a regular expression or a
+function.
+
+If a character, this is converted to a regular expression
+matching beginnings of words that start with given character.
+
+If a regular expression, this is used directly to match portions
+of the buffer.
+
+If a function, it should take two arguments: beginning and end
+positions inside which we search for the places.  It can return
+either a list of overlays, where each overlay spans one place, or
+a list of cons pairs (beg . end), where each specifies one place.
+
+WINDOW-SCOPE is a function taking zero arguments and returning a
+cons pair (beg . end).  This \"region\" is passed to the
+selector.
+
+Window scope resolution is useful to narrow down the region of
+the visible portion of the window from where candidates should be
+picked.  It should return bounds of this region.  These bounds
+should not overflow the visible buffer region.
+
+FRAME-SCOPE is a function taking zero arguments and returning a
+list of (visible) windows where we should look for candidates.
+
+Note especially that you have to return a list even if you only
+want one window (cf. `bjump-fs-current-window').  The windows are
+then selected in order of the returned list, so if you want some
+special ordering, order them before returning the list.
+
+PICKER is a procedure which picks the place.  It can be an
+interactive function but does not need to.  It takes one
+argument, the list of overlays representing all possible places.
+
+ACTION is a function taking the overlay representing the place
+and producing whatever result, doing anything whatsoever.  At the
+time this function is executed, selected window is the window
+from where the jump function was called.  You can get the
+\"target\" window where the passed overlay was defined by reading
+the property `:bjump-window' from the overlay.
+
+The following hooks should be symbols pointing to lists such that
+they can be passed into `run-hooks'.
+
+BEFORE-ACTION-HOOK is a hook variable executed before action.
+
+AFTER-ACTION-HOOK is a hook variable executed after action.
+
+AFTER-CLEANUP-HOOK is a hook variable executed just before this
+function returns."
   (let (ovs return-value)
     (unwind-protect
         (progn
@@ -363,21 +405,26 @@ different hooks, therefore we let the callee provide those."
 
 ;;; Interactive
 (defun bjump-char-jump-line (char)
-  "Jump to CHAR anywhere on current line.
+  "Jump to CHAR anywhere on the current line.
 
 This function respects `visual-line-mode'."
   (interactive "cChar: ")
   (bjump-jump (regexp-quote (char-to-string char)) :window-scope 'bjump-ws-line-bounds))
 
 (defun bjump-word-jump (head-char)
+  "Jump to a word starting with HEAD-CHAR visible in the selected window."
   (interactive "cHead char: ")
   (bjump-jump head-char))
 
 (defun bjump-word-jump-line (head-char)
+  "Jump to a word starting with HEAD-CHAR anywhere on the current line.
+
+This function respects `visual-line-mode'."
   (interactive "cHead char: ")
   (bjump-jump head-char :window-scope 'bjump-ws-line-bounds))
 
 (defun bjump-word-jump-paragraph (head-char)
+  "Jump to a word starting with HEAD-CHAR anywhere in the current paragraph."
   (interactive "cHead char: ")
   (bjump-jump head-char :window-scope 'bjump-ws-paragraph-bounds))
 
@@ -423,6 +470,7 @@ there is no guarantee about which window is the selected one."
 ;; TODO these "while stuff do stuff" loops repeat all over the place.
 ;; Abstract it into some "collector" pattern
 (defun bjump-help-link-jump ()
+  "Follow a help link visible in the selected window."
   (interactive)
   (bjump-jump
    (lambda (beg end)
@@ -438,6 +486,7 @@ there is no guarantee about which window is the selected one."
    :action (bjump-com-goto-char-execute 'push-button)))
 
 (defun bjump-info-link-jump ()
+  "Follow an info link visible in the selected window."
   (interactive)
   (bjump-jump
    (lambda (beg end)
@@ -459,7 +508,7 @@ This command is called with point on the file we want to act upon."
   :group 'bjump)
 
 (defun bjump-dired-jump ()
-  "Run `bjump-dired-open-command' on a file."
+  "Run `bjump-dired-open-command' on a file in a dired buffer."
   (interactive)
   (bjump-jump
    (lambda (beg end)
