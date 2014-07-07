@@ -93,7 +93,15 @@ there is no guarantee about which window is the selected one."
 
 (defun bjump-ws-line-bounds ()
   "Get the line bounds at point."
-  (cons (line-beginning-position) (line-end-position)))
+  (if (bound-and-true-p visual-line-mode)
+      (cons
+       (save-excursion
+         (beginning-of-visual-line)
+         (point))
+       (save-excursion
+         (end-of-visual-line)
+         (point)))
+    (cons (line-beginning-position) (line-end-position))))
 
 (defun bjump-ws-paragraph-bounds ()
   "Get the paragraph bounds at point."
