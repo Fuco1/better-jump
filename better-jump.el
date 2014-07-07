@@ -71,7 +71,7 @@ there is no guarantee about which window is the selected one."
 ;;; Selectors
 ;; ...
 
-(defun bjump-selector-char (char)
+(defun bjump-selector-word-by-char (char)
   "Return a regexp matching CHAR at the beginning of a word."
   (concat "\\<" (char-to-string char)))
 
@@ -356,7 +356,7 @@ different hooks, therefore we let the callee provide those."
                   ;; indirect buffers, but that seems a bit overkill.
                   (cond
                    ((characterp selector)
-                    (setq new-ovs (nreverse (ov-regexp (bjump-selector-char selector) beg end))))
+                    (setq new-ovs (nreverse (ov-regexp (bjump-selector-word-by-char selector) beg end))))
                    ((stringp selector)
                     (setq new-ovs (nreverse (ov-regexp selector beg end))))
                    (t
