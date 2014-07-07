@@ -386,6 +386,13 @@ different hooks, therefore we let the callee provide those."
 
 
 ;;; Interactive
+(defun bjump-char-jump-line (char)
+  "Jump to CHAR anywhere on current line.
+
+This function respects `visual-line-mode'."
+  (interactive "cChar: ")
+  (bjump-jump (char-to-string char) :window-scope 'bjump-ws-line-bounds))
+
 (defun bjump-word-jump (head-char)
   (interactive "cHead char: ")
   (bjump-jump head-char))
