@@ -249,11 +249,15 @@ most preferred letters first (for example, the home-row)."
 ;; function was called.  You can get the window where this overlay is
 ;; defined by getting the property `:bjump-window' from the overlay.
 
-(defun bjump-action-goto-char (ov)
-  "Select the frame and window where OV is placed, then go to the beginning of OV."
+(defun bjump-action-goto-char (ov &optional no-mark)
+  "Select the frame and window where OV is placed, then go to the beginning of OV.
+
+If the optional argument NO-MARK is non-nil, do not push the
+current position onto the `mark-ring'."
   (let ((win (ov-val ov :bjump-window)))
     (select-frame-set-input-focus (window-frame win))
     (select-window win)
+    (unless no-mark (push-mark))
     (goto-char (ov-beg ov))))
 
 (defun bjump-action-goto-window (ov)
@@ -280,14 +284,14 @@ Action should be a zero-argument function.
 
 Return a function suitable for use in `bjump-jump' :action."
   (lambda (ov)
-    (bjump-action-goto-char ov)
+    (bjump-action-goto-char ov t)
     (funcall action)))
 
 (defun bjump-com-at-char-execute (action)
   "Same as `bjump-com-goto-char-execute' but wrapped with `save-excursion'."
   (lambda (ov)
     (save-excursion
-      (bjump-action-goto-char ov)
+      (bjump-action-goto-char ov t)
       (funcall action))))
 
 
