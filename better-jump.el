@@ -49,7 +49,7 @@
 
 (defun bjump-selector-word-by-char (char)
   "Return a regexp matching CHAR at the beginning of a word."
-  (concat "\\<" (char-to-string char)))
+  (concat "\\<" (regexp-quote (char-to-string char))))
 
 
 ;;; Window scope
@@ -367,7 +367,7 @@ different hooks, therefore we let the callee provide those."
 
 This function respects `visual-line-mode'."
   (interactive "cChar: ")
-  (bjump-jump (char-to-string char) :window-scope 'bjump-ws-line-bounds))
+  (bjump-jump (regexp-quote (char-to-string char)) :window-scope 'bjump-ws-line-bounds))
 
 (defun bjump-word-jump (head-char)
   (interactive "cHead char: ")
