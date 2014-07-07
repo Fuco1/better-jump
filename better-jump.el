@@ -6,7 +6,7 @@
 ;; Maintainer: Matúš Goljer <matus.goljer@gmail.com>
 ;; Version: 0.0.1
 ;; Created: 1st June 2014
-;; Package-requires: ((dash "2.6.0") (ov.el "1.0"))
+;; Package-requires: ((dash "2.7.0") (ov.el "1.0"))
 ;; Keywords: convenience
 
 ;; This program is free software; you can redistribute it and/or
