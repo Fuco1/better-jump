@@ -342,7 +342,12 @@ different hooks, therefore we let the callee provide those."
                     (setq new-ovs (nreverse (ov-regexp selector beg end))))
                    (t
                     (let ((bounds (funcall selector beg end)))
-                      (setq new-ovs (--map (make-overlay (car it) (cdr it)) bounds)))))
+                      ;; If the first returned bound is overlay, we
+                      ;; assume all of them are.  In that case, we
+                      ;; just pass them along
+                      (if (overlayp (car bounds))
+                          (setq new-ovs bounds)
+                        (setq new-ovs (--map (make-overlay (car it) (cdr it)) bounds))))))
                   (setq ovs (-concat ovs (ov-set new-ovs :bjump-window win)))))))
           (--each ovs
             (ov-set it
