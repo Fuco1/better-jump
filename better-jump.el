@@ -321,7 +321,7 @@ ACTION is what to do with the picked match (takes matched overlay).
 HOOKS is a list of actions to run at specific places.  Global
 hooks do not make sense because each jump action might need
 different hooks, therefore we let the callee provide those."
-  (let ((ovs))
+  (let (ovs return-value)
     (unwind-protect
         (progn
           (-each (funcall frame-scope)
@@ -352,12 +352,13 @@ different hooks, therefore we let the callee provide those."
           (-if-let (picked-match (funcall picker ovs))
               (progn
                 (run-hooks before-action-hook)
-                (funcall action picked-match)
+                (setq return-value (funcall action picked-match))
                 (run-hooks after-action-hook))
             ;; make these messages better and non-annoying somehow.
             (message "[better jump] No match")))
       (--each ovs (delete-overlay it))
-      (run-hooks after-cleanup-hook))))
+      (run-hooks after-cleanup-hook)
+      return-value)))
 
 
 ;;; Interactive
