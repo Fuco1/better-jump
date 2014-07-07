@@ -41,30 +41,6 @@
 ;; rely on the hook mechanisms, instead, they should use the
 ;; operations prescribed in `bjump-jump'.
 
-;; add more hooks
-(defcustom bjump-window-jump-before-action-hook ()
-  "Hook run before the jump to another window.
-
-When this hook runs, the selected window is the window from which
-we want to jump away."
-  :type 'hook
-  :group 'bjump)
-
-(defcustom bjump-window-jump-after-action-hook ()
-  "Hook run after the jump to another window.
-
-When this hook runs, the selected window is the window to which
-we jumped."
-  :type 'hook
-  :group 'bjump)
-
-(defcustom bjump-window-jump-after-cleanup-hook ()
-  "Hook run after the cleanup.
-
-This hook is run even in the case the operation was cancelled, so
-there is no guarantee about which window is the selected one."
-  :type 'hook
-  :group 'bjump)
 
 ;; TODO: sync these docs into `bjump-jump'.
 
@@ -405,12 +381,38 @@ This function respects `visual-line-mode'."
   (interactive "cHead char: ")
   (bjump-jump head-char :window-scope 'bjump-ws-paragraph-bounds))
 
+(defcustom bjump-window-jump-before-action-hook ()
+  "Hook run before the jump to another window.
+
+When this hook runs, the selected window is the window from which
+we want to jump away."
+  :type 'hook
+  :group 'bjump)
+
+(defcustom bjump-window-jump-after-action-hook ()
+  "Hook run after the jump to another window.
+
+When this hook runs, the selected window is the window to which
+we jumped."
+  :type 'hook
+  :group 'bjump)
+
+(defcustom bjump-window-jump-after-cleanup-hook ()
+  "Hook run after the cleanup.
+
+This hook is run even in the case the operation was cancelled, so
+there is no guarantee about which window is the selected one."
+  :type 'hook
+  :group 'bjump)
+
 (defun bjump-window-jump ()
+  "Jump to a window in currently visible frames."
   (interactive)
   (bjump-jump
    (lambda (_ _) (save-excursion
                    (move-to-window-line 0)
-                   (list (bjump-point+1))))
+                   (list (ov (point) (1+ (point))
+                             :bjump-picker-face 'bjump-hint-foreground-window-picker))))
    :window-scope 'bjump-ws-ignore
    :frame-scope 'bjump-fs-visible-frames-nsw
    :action 'bjump-action-goto-window
