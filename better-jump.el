@@ -62,6 +62,15 @@
   "Return a regexp matching CHAR at the beginning of a word."
   (concat "\\<" (regexp-quote (char-to-string char))))
 
+(defun bjump-selector-window (_ _)
+  "Return a single selector for current window.
+
+Useful for window switching/deletion operations."
+  (save-excursion
+    (move-to-window-line 0)
+    (list (ov (point) (1+ (point))
+              :bjump-picker-face 'bjump-hint-foreground-window-picker))))
+
 
 ;;; Window scope
 ;; TODO: add more using `thingatpt' (defun, sentence), but guard for
@@ -463,13 +472,12 @@ there is no guarantee about which window is the selected one."
   :group 'bjump-hooks)
 
 (defun bjump-window-jump ()
-  "Jump to a window in currently visible frames."
+  "Jump to a window in currently visible frames.
+
+If there are only two windows, jump to the other one."
   (interactive)
   (bjump-jump
-   (lambda (_ _) (save-excursion
-                   (move-to-window-line 0)
-                   (list (ov (point) (1+ (point))
-                             :bjump-picker-face 'bjump-hint-foreground-window-picker))))
+   'bjump-selector-window
    :window-scope 'bjump-ws-ignore
    :frame-scope 'bjump-fs-visible-frames-nsw
    :action 'bjump-action-goto-window
