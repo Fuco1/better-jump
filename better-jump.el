@@ -36,6 +36,16 @@
   :group 'editing
   :prefix "bjump-")
 
+(defgroup bjump-faces ()
+  "Better-jump faces."
+  :group 'bjump
+  :prefix "bjump-")
+
+(defgroup bjump-hooks ()
+  "Hooks provided for built-in better-jump jumpers."
+  :group 'bjump
+  :prefix "bjump-")
+
 
 ;;; User settings
 ;; Hooks should be used by *end-users only* to modify or customize the
@@ -125,7 +135,7 @@ Ordered by `next-window' and `visible-frame-list'."
 (defface bjump-hint-background
   '((t (:foreground "gray40")))
   "Background face for the entire visible buffer region."
-  :group 'bjump)
+  :group 'bjump-faces)
 
 (defface bjump-hint-foreground
   '((((class color)) (:foreground "red"))
@@ -133,7 +143,7 @@ Ordered by `next-window' and `visible-frame-list'."
     (((background light)) (:foreground "gray0"))
     (t (:foreground "gray100")))
   "Background face used for hints during hint picking."
-  :group 'bjump)
+  :group 'bjump-faces)
 
 (defface bjump-hint-foreground-window-picker
   '((((class color)) (:foreground "red" :height 1000))
@@ -141,7 +151,7 @@ Ordered by `next-window' and `visible-frame-list'."
     (((background light)) (:foreground "gray0"))
     (t (:foreground "gray100")))
   "Background face used for hints during hint picking."
-  :group 'bjump)
+  :group 'bjump-faces)
 
 (defcustom bjump-picker-single-letter-list "asdfghjklqwertyuiopzxcvbnm"
   "List of letters to use to pick from the selected values.
@@ -434,7 +444,7 @@ This function respects `visual-line-mode'."
 When this hook runs, the selected window is the window from which
 we want to jump away."
   :type 'hook
-  :group 'bjump)
+  :group 'bjump-hooks)
 
 (defcustom bjump-window-jump-after-action-hook ()
   "Hook run after the jump to another window.
@@ -442,7 +452,7 @@ we want to jump away."
 When this hook runs, the selected window is the window to which
 we jumped."
   :type 'hook
-  :group 'bjump)
+  :group 'bjump-hooks)
 
 (defcustom bjump-window-jump-after-cleanup-hook ()
   "Hook run after the cleanup.
@@ -450,7 +460,7 @@ we jumped."
 This hook is run even in the case the operation was cancelled, so
 there is no guarantee about which window is the selected one."
   :type 'hook
-  :group 'bjump)
+  :group 'bjump-hooks)
 
 (defun bjump-window-jump ()
   "Jump to a window in currently visible frames."
