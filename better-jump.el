@@ -485,6 +485,20 @@ If there are only two windows, jump to the other one."
    :after-action-hook 'bjump-window-jump-after-action-hook
    :after-cleanup-hook 'bjump-window-jump-after-cleanup-hook))
 
+(defun bjump-window-delete ()
+  "Delete a window in currently visible frames.
+
+If there are only two windows, delete the other one.  Otherwise,
+interactively pick window to be deleted."
+  (interactive)
+  (bjump-jump
+   'bjump-selector-window
+   :window-scope 'bjump-ws-ignore
+   :frame-scope 'bjump-fs-visible-frames-nsw
+   :action (lambda (ov)
+             (let ((win (ov-val ov :bjump-window)))
+               (delete-window win)))))
+
 ;; TODO these "while stuff do stuff" loops repeat all over the place.
 ;; Abstract it into some "collector" pattern
 (defun bjump-help-link-jump ()

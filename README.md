@@ -11,6 +11,7 @@ Currently provides these example jumps:
     bjump-word-jump-line (head-char)
     bjump-word-jump-paragraph (head-char)
     bjump-window-jump ()
+    bjump-window-delete ()
     bjump-help-link-jump ()
     bjump-info-link-jump ()
     bjump-dired-jump ()
