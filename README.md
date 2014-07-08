@@ -19,4 +19,3 @@ Currently provides these example jumps:
 # Known issues
 
 * If you display the same buffer in two windows and the visible portions overlap, the hints will go crazy.  This is almost never an issue for me so it is not high priority fix.  If anyone wants to fix this, I'll be very happy.
-* Sometimes the visible buffer portion jumps up or down in very small windows.  This is some sort of "clever" Emacs hackery.  I can't quite figure out what is going on.
