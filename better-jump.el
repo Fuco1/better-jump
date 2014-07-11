@@ -423,6 +423,7 @@ function returns."
 
 
 ;;; Interactive
+;;;###autoload
 (defun bjump-char-jump-line (char)
   "Jump to CHAR anywhere on the current line.
 
@@ -430,11 +431,13 @@ This function respects `visual-line-mode'."
   (interactive "cChar: ")
   (bjump-jump (regexp-quote (char-to-string char)) :window-scope 'bjump-ws-line-bounds))
 
+;;;###autoload
 (defun bjump-word-jump (head-char)
   "Jump to a word starting with HEAD-CHAR visible in the selected window."
   (interactive "cHead char: ")
   (bjump-jump head-char))
 
+;;;###autoload
 (defun bjump-word-jump-line (head-char)
   "Jump to a word starting with HEAD-CHAR anywhere on the current line.
 
@@ -442,6 +445,7 @@ This function respects `visual-line-mode'."
   (interactive "cHead char: ")
   (bjump-jump head-char :window-scope 'bjump-ws-line-bounds))
 
+;;;###autoload
 (defun bjump-word-jump-paragraph (head-char)
   "Jump to a word starting with HEAD-CHAR anywhere in the current paragraph."
   (interactive "cHead char: ")
@@ -471,6 +475,7 @@ there is no guarantee about which window is the selected one."
   :type 'hook
   :group 'bjump-hooks)
 
+;;;###autoload
 (defun bjump-window-jump ()
   "Jump to a window in currently visible frames.
 
@@ -485,6 +490,7 @@ If there are only two windows, jump to the other one."
    :after-action-hook 'bjump-window-jump-after-action-hook
    :after-cleanup-hook 'bjump-window-jump-after-cleanup-hook))
 
+;;;###autoload
 (defun bjump-window-delete ()
   "Delete a window in currently visible frames.
 
@@ -501,6 +507,7 @@ interactively pick window to be deleted."
 
 ;; TODO these "while stuff do stuff" loops repeat all over the place.
 ;; Abstract it into some "collector" pattern
+;;;###autoload
 (defun bjump-help-link-jump ()
   "Follow a help link visible in the selected window."
   (interactive)
@@ -517,6 +524,7 @@ interactively pick window to be deleted."
          (nreverse buttons))))
    :action (bjump-com-goto-char-execute 'push-button)))
 
+;;;###autoload
 (defun bjump-info-link-jump ()
   "Follow an info link visible in the selected window."
   (interactive)
@@ -539,6 +547,7 @@ This command is called with point on the file we want to act upon."
   :type 'function
   :group 'bjump)
 
+;;;###autoload
 (defun bjump-dired-jump ()
   "Run `bjump-dired-open-command' on a file in a dired buffer."
   (interactive)
