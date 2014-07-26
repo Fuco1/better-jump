@@ -264,14 +264,14 @@ Action should be a zero-argument function.
 
 Return a function suitable for use in `bjump-jump' :action."
   (lambda (ov)
-    (bjump-action-goto-char ov t)
+    (bjump-action-goto-char ov :no-mark)
     (funcall action)))
 
 (defun bjump-com-at-char-execute (action)
   "Same as `bjump-com-goto-char-execute' but wrapped with `save-excursion'."
   (lambda (ov)
     (save-excursion
-      (bjump-action-goto-char ov t)
+      (bjump-action-goto-char ov :no-mark)
       (funcall action))))
 
 
