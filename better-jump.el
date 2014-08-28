@@ -54,7 +54,6 @@
 ;; operations prescribed in `bjump-jump'.
 
 
-;; TODO: sync these docs into `bjump-jump'.
 
 ;;; Selectors
 
@@ -180,6 +179,7 @@ most preferred letters first (for example, the home-row)."
 ;; - label updater after each picked letter
 ;; - prompt
 ;; - it should be possible to also take the face to be used from the overlay itself
+;;   - from the property :bjump-picker-face
 (defun bjump-picker-single-letter (ovs)
   (let* ((num-choices (length bjump-picker-single-letter-list))
          (num-selected (length ovs))
@@ -207,7 +207,8 @@ most preferred letters first (for example, the home-row)."
             (setq ovs (--zip-with (ov-set it
                                           'priority 10001
                                           'display
-                                          (bjump-substr other 0 1 'face 'bjump-hint-foreground)
+                                          (bjump-substr other 0 1
+                                                        'face (or (ov-val it :bjump-picker-face) 'bjump-hint-foreground))
                                           :bjump-label other)
                                   ovs ov-labels))
             (while (and (not r) (<= i depth))
@@ -218,7 +219,8 @@ most preferred letters first (for example, the home-row)."
                   (--each (car sep) (let ((label (ov-val it :bjump-label)))
                                       (ov-set it 'display (bjump-substr
                                                            label i (1+ i)
-                                                           'face 'bjump-hint-foreground))))
+                                                           'face
+                                                           (or (ov-val it :bjump-picker-face) 'bjump-hint-foreground)))))
                   (setq ovs (car sep)))
                 (-when-let (ov (--first (equal (ov-val it :bjump-label) current-label) ovs))
                   (setq r ov)))
