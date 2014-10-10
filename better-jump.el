@@ -6,7 +6,7 @@
 ;; Maintainer: Matúš Goljer <matus.goljer@gmail.com>
 ;; Version: 0.0.1
 ;; Created: 1st June 2014
-;; Package-requires: ((dash "2.7.0") (ov.el "1.0"))
+;; Package-requires: ((dash "2.9.0") (ov.el "1.0"))
 ;; Keywords: convenience
 
 ;; This program is free software; you can redistribute it and/or
@@ -28,6 +28,7 @@
 
 ;;; Code:
 
+(require 'thingatpt)
 (require 'dash)
 (require 'ov)
 
@@ -506,6 +507,54 @@ interactively pick window to be deleted."
    :action (lambda (ov)
              (let ((win (ov-val ov :bjump-window)))
                (delete-window win)))))
+
+;;;###autoload
+(defun bjump-transpose-chars (char)
+  "Transpose character at point with the first character CHAR before point.
+
+With a prefix argument, let user choose which character to transpose."
+  (interactive "cHead char: ")
+  (bjump-jump
+   (if current-prefix-arg
+       (regexp-quote (char-to-string char))
+     (lambda (b e)
+       (save-excursion
+         (search-backward (char-to-string char) b)
+         (list (bjump-point+1)))))
+   :action (lambda (ov)
+             (cl-flet ((eolbp () (or (looking-at "\n") (eobp))))
+               (let ((current-char (if (eolbp) (char-before) (char-after)))
+                     (swap-char (char-after (ov-beg ov))))
+                 (if (eolbp) (delete-char -1) (delete-char 1))
+                 (insert swap-char)
+                 (save-excursion
+                   (goto-char (ov-beg ov))
+                   (delete-char 1)
+                   (insert current-char)))))))
+
+;;;###autoload
+(defun bjump-transpose-words (char)
+  "Transpose word at point with the first word starting with CHAR before point.
+
+With a prefix argument, let user choose which word to transpose."
+  (interactive "cHead char: ")
+  (bjump-jump
+   (if current-prefix-arg char
+     (lambda (b e)
+       (save-excursion
+         (re-search-backward (bjump-selector-word-by-char char) b)
+         (list (bjump-point+1)))))
+   :action (lambda (ov)
+             (let ((current-word (word-at-point))
+                   (swap-word (save-excursion
+                                (goto-char (ov-beg ov))
+                                (word-at-point))))
+               (-let [(b . e) (bounds-of-thing-at-point 'word)] (delete-region b e))
+               (insert swap-word)
+               (save-excursion
+                 (goto-char (ov-beg ov))
+                 (-let [(b . e) (bounds-of-thing-at-point 'word)] (delete-region b e))
+                 (insert current-word))))))
 
 ;; TODO these "while stuff do stuff" loops repeat all over the place.
 ;; Abstract it into some "collector" pattern
