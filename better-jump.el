@@ -556,6 +556,27 @@ With a prefix argument, let user choose which word to transpose."
                  (-let [(b . e) (bounds-of-thing-at-point 'word)] (delete-region b e))
                  (insert current-word))))))
 
+;;;###autoload
+(defun bjump-zap-to-char (char)
+  "Zap to char CHAR.
+
+See also `zap-to-char'."
+  (interactive "cChar: ")
+  (bjump-jump
+   (regexp-quote (char-to-string char))
+   :action (lambda (ov)
+             (kill-region (point) (ov-end ov)))))
+
+(defun bjump-zap-up-to-char (char)
+  "Zap up to char CHAR.
+
+See also `zap-up-to-char'."
+  (interactive "cChar: ")
+  (bjump-jump
+   (regexp-quote (char-to-string char))
+   :action (lambda (ov)
+             (kill-region (point) (ov-beg ov)))))
+
 ;; TODO these "while stuff do stuff" loops repeat all over the place.
 ;; Abstract it into some "collector" pattern
 ;;;###autoload
