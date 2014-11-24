@@ -441,6 +441,12 @@ This function respects `visual-line-mode'."
   (bjump-jump head-char))
 
 ;;;###autoload
+(defun bjump-char-jump (char)
+  "Jump to a word starting with HEAD-CHAR visible in the selected window."
+  (interactive "cHead char: ")
+  (bjump-jump (regexp-quote (char-to-string char))))
+
+;;;###autoload
 (defun bjump-word-jump-line (head-char)
   "Jump to a word starting with HEAD-CHAR anywhere on the current line.
 
