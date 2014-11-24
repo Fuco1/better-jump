@@ -563,6 +563,16 @@ With a prefix argument, let user choose which word to transpose."
                  (insert current-word))))))
 
 ;;;###autoload
+(defun bjump-select-region ()
+  "Select a region."
+  (interactive)
+  (bjump-char-jump (read-char "Start of region: "))
+  (push-mark)
+  (bjump-char-jump (read-char "End of region: "))
+  (forward-char)
+  (exchange-point-and-mark))
+
+;;;###autoload
 (defun bjump-zap-to-char (char)
   "Zap to char CHAR.
 
