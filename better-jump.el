@@ -602,12 +602,18 @@ See also `zap-up-to-char'."
   (bjump-jump
    (lambda (beg end)
      (save-excursion
-       (let (b buttons)
+       (let (b buttons position)
          (goto-char beg)
          (while (and (setq b (ignore-errors (forward-button 1)))
-                     (< b end))
-           (push (cons (marker-position b)
-                       (1+ (marker-position b)))
+                     (setq position
+                           (cond
+                            ((overlayp b)
+                             (overlay-start b))
+                            ((markerp b)
+                             (marker-position b))
+                            (t (error "b is not a marker or overlay"))))
+                     (< position end))
+           (push (cons position (1+ position))
                  buttons))
          (nreverse buttons))))
    :action (bjump-com-goto-char-execute 'push-button)))
