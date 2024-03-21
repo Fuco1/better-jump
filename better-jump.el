@@ -197,7 +197,7 @@ most preferred letters first (for example, the home-row)."
          ((= num-selected 0) nil)
          ((= num-selected 1) (car ovs))
          (t
-          (let* ((depth (1+ (floor (log num-selected num-choices))))
+          (let* ((depth (1+ (floor (log num-selected (1+ num-choices)))))
                  (ov-labels
                   (apply '-table-flat (lambda (&rest stuff)
                                         (apply 'string (nreverse stuff)))
